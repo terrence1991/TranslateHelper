@@ -72,7 +72,7 @@ public class ListenerService extends AccessibilityService {
 					if (contentText == null || title == null || notification.tickerText == null) {
 						return;
 					}
-					if ("小号".equals(title)) {
+					if ("小号".equals(title)) {//test
 						try {
 							notification.contentIntent.send();
 						} catch (PendingIntent.CanceledException e) {
