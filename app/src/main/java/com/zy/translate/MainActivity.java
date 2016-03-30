@@ -33,6 +33,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
+        if(ListenerService.getInstance()==null){
+            btn.setText("开启辅助功能");
+            btn.setEnabled(true);
+        }else{
+            btn.setText("辅助功能已开启");
+            btn.setEnabled(false);
+        }
     }
 }

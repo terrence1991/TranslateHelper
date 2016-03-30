@@ -32,7 +32,7 @@ import java.util.Map;
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 public class ListenerService extends AccessibilityService {
 
-	private ListenerService sInstance;
+	private static ListenerService sInstance;
 	private ClipboardManager clip;
 	private String mCurrentActivity = "";
 	private String mPackageName;
@@ -397,6 +397,10 @@ public class ListenerService extends AccessibilityService {
 	public static boolean isScreenOn(Context context) {
 		PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
 		return pm.isScreenOn();
+	}
+
+	public static ListenerService getInstance(){
+		return sInstance;
 	}
 	
 }
