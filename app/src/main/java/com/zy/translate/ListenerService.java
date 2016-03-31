@@ -20,7 +20,12 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.RemoteViews;
+import android.widget.TextView;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -36,11 +41,17 @@ public class ListenerService extends AccessibilityService {
 	private ClipboardManager clip;
 	private String mCurrentActivity = "";
 	private String mPackageName;
+	private boolean waitDialog;
+	String toName;
+	String lastTranslate;
+	int retryTime;
 
 	private Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
 			switch (msg.what) {
-
+				case 1:
+					waitAccessEvent(500);
+					break;
 			}
 		}
 	};
@@ -51,36 +62,182 @@ public class ListenerService extends AccessibilityService {
 		if (event == null || event.getPackageName() == null) {
 			return;
 		}
+		if(!SPHelper.hasStarted()){
+			return;
+		}
 		if (event.getPackageName() != null) {
 			mPackageName = event.getPackageName().toString();
 		}
-		boolean isWeixin = AppConstants.WECHAT_PACKAGE_NAME.equals(mPackageName);
-		if(isWeixin) {
-			switch (event.getEventType()) {
-				case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
-					mCurrentActivity = event.getClassName().toString();
-					break;
-				case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
-					Notification notification = (Notification) event.getParcelableData();
-					if (notification == null) {
-						return;
-					}
+		if("com.zy.translate".equals(mPackageName)){
+			return;
+		}
+		try {
+			boolean isWeixin = AppConstants.WECHAT_PACKAGE_NAME.equals(mPackageName);
+			if (isWeixin) {
+				switch (event.getEventType()) {
+					case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
+						mCurrentActivity = event.getClassName().toString();
+						if ("com.tencent.mm.ui.LauncherUI".equals(mCurrentActivity)) {
+							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "返回", ImageView.class.getName(), 0, true);
+							if (node == null) {
+								AccessibilityNodeInfo node2 = ListenerService.findNodeByText(event.getSource(), "搜索", TextView.class.getName(), AccessibilityNodeInfo.ACTION_CLICK, true);
+								if (node2 == null) {
+									waitAccessEvent(1000);
+								} else {
+									while (!node2.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+										retryTime++;
+										if (retryTime > 3) {
+											retryTime = 0;
+											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+											break;
+										}
+									}
+								}
+							} else {
 
-					String texts[] = getContentText(notification);
-					String contentText = texts[0];
-					String title = texts[1];
-					if (contentText == null || title == null || notification.tickerText == null) {
-						return;
-					}
-					if ("小号".equals(title)) {//test
-						try {
-							notification.contentIntent.send();
-						} catch (PendingIntent.CanceledException e) {
-							e.printStackTrace();
+							}
+						} else if ("com.tencent.mm.plugin.search.ui.FTSMainUI".equals(mCurrentActivity)) {
+							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), "文件传输助手", TextView.class.getName(), 0, false);
+							if (textnode == null) {
+								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
+								if (editnode == null) {
+									waitAccessEvent(1000);
+								} else {
+									setText(editnode, "文件传输助手");
+									waitAccessEvent(500);
+								}
+							} else {
+								if (textnode.getParent() == null) {
+									return;
+								}
+								while (!textnode.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+									retryTime++;
+									if (retryTime > 3) {
+										retryTime = 0;
+										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+										break;
+									}
+								}
+							}
+						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
+							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
+							if (listNode == null) {
+								waitAccessEvent(1000);
+							} else {
+								if (listNode.getChildCount() > 1) {
+									AccessibilityNodeInfo toNameNode = listNode.getChild(listNode.getChildCount() - 2);
+									if (toNameNode.getChild(toNameNode.getChildCount() - 2).getText() == null) {
+										waitAccessEvent(500);
+										return;
+									}
+									toName = toNameNode.getChild(toNameNode.getChildCount() - 2).getText().toString();
+									if (toName.startsWith("To:")) {
+										toName = toName.substring(3);
+										if (TextUtils.isEmpty(toName)) {
+											waitAccessEvent(3000);
+											return;
+										}
+										AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
+										if (valueNode.getChild(valueNode.getChildCount() - 2).getText() == null) {
+											waitAccessEvent(500);
+											return;
+										}
+										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
+										if (temp.equals(lastTranslate)) {
+											waitAccessEvent(3000);
+											return;
+										} else {
+											lastTranslate = temp;
+											while (!valueNode.getChild(valueNode.getChildCount() - 2).performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+												retryTime++;
+												if (retryTime > 3) {
+													retryTime = 0;
+													MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+													return;
+												}
+											}
+										}
+
+										waitDialog = true;
+										mHandler.sendEmptyMessageDelayed(1, 10000);
+									} else {
+										waitAccessEvent(1000);
+									}
+								} else {
+									waitAccessEvent(3000);
+								}
+							}
+						} else if (mCurrentActivity.startsWith("com.tencent.mm.ui.base") && waitDialog) {
+							Log.i("NULL", "" + mCurrentActivity);
+							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "转发", TextView.class.getName(), 0, false);
+							if (node == null) {
+								Log.i("NULL", "没有转发");
+								waitAccessEvent(500);
+							} else {
+								mHandler.removeMessages(1);
+								waitDialog = false;
+								while (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+									retryTime++;
+									if (retryTime > 3) {
+										retryTime = 0;
+										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+										break;
+									}
+								}
+							}
+						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
+							if (toName == null) {
+								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+								return;
+							}
+							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), toName, TextView.class.getName(), 0, false);
+							if (textnode == null) {
+								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
+								if (editnode == null) {
+									waitAccessEvent(1000);
+								} else {
+									setText(editnode, toName);
+									waitAccessEvent(500);
+								}
+							} else {
+								waitDialog = true;
+								while (!textnode.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+									retryTime++;
+									if (retryTime > 3) {
+										retryTime = 0;
+										waitDialog = false;
+										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+										break;
+									}
+								}
+							}
+						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
+							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
+							if (buttonnode == null) {
+								waitAccessEvent(500);
+							} else {
+								waitDialog = false;
+								while (!buttonnode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+									retryTime++;
+									if (retryTime > 3) {
+										retryTime = 0;
+										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+										break;
+									}
+								}
+							}
+						} else {
+							waitAccessEvent(1000);
 						}
-					}
-					break;
+						break;
+					case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
+						break;
+				}
+			} else {
+				MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
 			}
+		}catch (Exception e){
+			waitAccessEvent(1000);
 		}
 	}
 
@@ -385,6 +542,12 @@ public class ListenerService extends AccessibilityService {
 	protected void onServiceConnected() {
 		clip = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
 		sInstance = this;
+		if (MainActivity.sWaitForAccessibility ) {
+			Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+			intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			getApplicationContext().startActivity(intent);
+			MainActivity.sWaitForAccessibility = false;
+		}
 		super.onServiceConnected();
 	}
 
@@ -401,6 +564,13 @@ public class ListenerService extends AccessibilityService {
 
 	public static ListenerService getInstance(){
 		return sInstance;
+	}
+
+	public void waitAccessEvent(long time) {
+		Intent waitIntent = new Intent(this, WaitActivity.class);
+		waitIntent.putExtra(WaitActivity.EXTRA_TIME, time);
+		waitIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		startActivity(waitIntent);
 	}
 	
 }
