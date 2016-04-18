@@ -34,6 +34,10 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/listener_service" />
         </service>
+        <activity
+            android:name=".wxapi.WXEntryActivity"
+            android:exported="true">
+        </activity>
     </application>
 
 </manifest>

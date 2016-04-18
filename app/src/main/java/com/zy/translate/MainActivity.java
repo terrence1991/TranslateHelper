@@ -10,6 +10,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import com.zy.translate.wxapi.WXEntryActivity;
+
 public class MainActivity extends Activity {
 
     static boolean sWaitForAccessibility = false;
@@ -42,6 +44,7 @@ public class MainActivity extends Activity {
                     SPHelper.setStarted(true);
                     OverlayWindow.show(getApplicationContext());
                     startApplication(MainActivity.this, AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+//                    WXEntryActivity.shareWeiXin(MainActivity.this, 0, 0, "http://www.baidu.com", "小白", "小白");
                 }
             }
         });

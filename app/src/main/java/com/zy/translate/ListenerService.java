@@ -27,6 +27,10 @@ import android.widget.ListView;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.zy.translate.wxapi.WXEntryActivity;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,8 +47,10 @@ public class ListenerService extends AccessibilityService {
 	private String mPackageName;
 	private boolean waitDialog;
 	String toName;
+	String lastToName;
 	String lastTranslate;
 	int retryTime;
+	boolean stayWeixin;
 
 	private Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
@@ -143,17 +149,29 @@ public class ListenerService extends AccessibilityService {
 											return;
 										}
 										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
-										if (temp.equals(lastTranslate)) {
+										if (temp.equals(lastTranslate)&&toName.equals(lastToName)) {
 											waitAccessEvent(3000);
 											return;
 										} else {
+											lastToName = toName;
 											lastTranslate = temp;
-											while (!valueNode.getChild(valueNode.getChildCount() - 2).performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
-												retryTime++;
-												if (retryTime > 3) {
-													retryTime = 0;
-													MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+											if(lastTranslate.startsWith("{")){
+												try {
+													Gson gson = new Gson();
+													ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
+													WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
+												} catch (Exception e) {
+													e.printStackTrace();
 													return;
+												}
+											}else {
+												while (!valueNode.getChild(valueNode.getChildCount() - 2).performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+													retryTime++;
+													if (retryTime > 3) {
+														retryTime = 0;
+														MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+														return;
+													}
 												}
 											}
 										}
@@ -172,7 +190,22 @@ public class ListenerService extends AccessibilityService {
 							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "转发", TextView.class.getName(), 0, false);
 							if (node == null) {
 								Log.i("NULL", "没有转发");
-								waitAccessEvent(500);
+								node = findNodeByText(event.getSource(), "分享", Button.class.getName(), 16, false);
+								if(node == null) {
+									Log.i("NULL", "没有分享");
+									waitAccessEvent(500);
+								}else{
+									mHandler.removeMessages(1);
+									waitDialog = true;
+									while (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+										retryTime++;
+										if (retryTime > 3) {
+											retryTime = 0;
+											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+											break;
+										}
+									}
+								}
 							} else {
 								mHandler.removeMessages(1);
 								waitDialog = false;
@@ -186,6 +219,10 @@ public class ListenerService extends AccessibilityService {
 								}
 							}
 						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
+							if(stayWeixin){
+								stayWeixin = false;
+								return;
+							}
 							if (toName == null) {
 								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
 								return;
@@ -214,7 +251,21 @@ public class ListenerService extends AccessibilityService {
 						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
 							if (buttonnode == null) {
-								waitAccessEvent(500);
+								buttonnode = findNodeByText(event.getSource(), "留在微信", Button.class.getName(), 16, false);
+								if (buttonnode == null) {
+									waitAccessEvent(500);
+								}else{
+									waitDialog = false;
+									stayWeixin = true;
+									while (!buttonnode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+										retryTime++;
+										if (retryTime > 3) {
+											retryTime = 0;
+											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+											break;
+										}
+									}
+								}
 							} else {
 								waitDialog = false;
 								while (!buttonnode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
