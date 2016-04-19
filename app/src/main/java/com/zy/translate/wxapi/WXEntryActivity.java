@@ -1,7 +1,5 @@
 package com.zy.translate.wxapi;
 
-import java.io.ByteArrayOutputStream;
-
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -18,8 +16,10 @@ import com.tencent.mm.sdk.openapi.SendMessageToWX;
 import com.tencent.mm.sdk.openapi.WXAPIFactory;
 import com.tencent.mm.sdk.openapi.WXMediaMessage;
 import com.tencent.mm.sdk.openapi.WXWebpageObject;
-import com.zy.translate.Constants;
+import com.zy.translate.AppConstants;
 import com.zy.translate.R;
+
+import java.io.ByteArrayOutputStream;
 
 
 public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
@@ -87,10 +87,10 @@ public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
 	
 	private static int checkWeiXinVersion(Context context) {
 		if(sWeiXinAPI == null)
-			sWeiXinAPI = WXAPIFactory.createWXAPI(context, Constants.APP_ID, true);
+			sWeiXinAPI = WXAPIFactory.createWXAPI(context, AppConstants.APP_ID, true);
 		if (sWeiXinAPI.isWXAppInstalled()) {
 			if (sWeiXinAPI.isWXAppSupportAPI()) {
-				sWeiXinAPI.registerApp(Constants.APP_ID);
+				sWeiXinAPI.registerApp(AppConstants.APP_ID);
 				return sWeiXinAPI.getWXAppSupportAPI();
 			} else {
 				Toast.makeText(context, "微信版本过低", Toast.LENGTH_SHORT).show();

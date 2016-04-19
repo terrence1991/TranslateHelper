@@ -90,14 +90,7 @@ public class ListenerService extends AccessibilityService {
 								if (node2 == null) {
 									waitAccessEvent(1000);
 								} else {
-									while (!node2.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-										retryTime++;
-										if (retryTime > 3) {
-											retryTime = 0;
-											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-											break;
-										}
-									}
+									retry(node2, null);
 								}
 							} else {
 
@@ -116,14 +109,7 @@ public class ListenerService extends AccessibilityService {
 								if (textnode.getParent() == null) {
 									return;
 								}
-								while (!textnode.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-									retryTime++;
-									if (retryTime > 3) {
-										retryTime = 0;
-										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-										break;
-									}
-								}
+								retry(textnode.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
@@ -145,8 +131,12 @@ public class ListenerService extends AccessibilityService {
 										}
 										AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
 										if (valueNode.getChild(valueNode.getChildCount() - 2).getText() == null) {
-											waitAccessEvent(500);
-											return;
+											if(findNodeByText(valueNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
+												retry(valueNode, null);
+											}else {
+												waitAccessEvent(500);
+												return;
+											}
 										}
 										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
 										if (temp.equals(lastTranslate)&&toName.equals(lastToName)) {
@@ -165,14 +155,7 @@ public class ListenerService extends AccessibilityService {
 													return;
 												}
 											}else {
-												while (!valueNode.getChild(valueNode.getChildCount() - 2).performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
-													retryTime++;
-													if (retryTime > 3) {
-														retryTime = 0;
-														MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-														return;
-													}
-												}
+												retry(valueNode.getChild(valueNode.getChildCount() - 2), null);
 											}
 										}
 
@@ -197,26 +180,12 @@ public class ListenerService extends AccessibilityService {
 								}else{
 									mHandler.removeMessages(1);
 									waitDialog = true;
-									while (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-										retryTime++;
-										if (retryTime > 3) {
-											retryTime = 0;
-											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-											break;
-										}
-									}
+									retry(node, null);
 								}
 							} else {
 								mHandler.removeMessages(1);
 								waitDialog = false;
-								while (!node.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-									retryTime++;
-									if (retryTime > 3) {
-										retryTime = 0;
-										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-										break;
-									}
-								}
+								retry(node.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
 							if(stayWeixin){
@@ -238,15 +207,12 @@ public class ListenerService extends AccessibilityService {
 								}
 							} else {
 								waitDialog = true;
-								while (!textnode.getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-									retryTime++;
-									if (retryTime > 3) {
-										retryTime = 0;
+								retry(textnode.getParent(), new GiveupListener() {
+									@Override
+									public void end() {
 										waitDialog = false;
-										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-										break;
 									}
-								}
+								});
 							}
 						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
@@ -257,25 +223,11 @@ public class ListenerService extends AccessibilityService {
 								}else{
 									waitDialog = false;
 									stayWeixin = true;
-									while (!buttonnode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-										retryTime++;
-										if (retryTime > 3) {
-											retryTime = 0;
-											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-											break;
-										}
-									}
+									retry(buttonnode, null);
 								}
 							} else {
 								waitDialog = false;
-								while (!buttonnode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
-									retryTime++;
-									if (retryTime > 3) {
-										retryTime = 0;
-										MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-										break;
-									}
-								}
+								retry(buttonnode, null);
 							}
 						} else {
 							waitAccessEvent(1000);
@@ -622,6 +574,24 @@ public class ListenerService extends AccessibilityService {
 		waitIntent.putExtra(WaitActivity.EXTRA_TIME, time);
 		waitIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		startActivity(waitIntent);
+	}
+
+	private void retry(AccessibilityNodeInfo node, GiveupListener listener){
+		while (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+			retryTime++;
+			if (retryTime > 3) {
+				if(listener!=null) {
+					listener.end();
+				}
+				retryTime = 0;
+				MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+				break;
+			}
+		}
+	}
+
+	interface GiveupListener{
+		public void end();
 	}
 	
 }

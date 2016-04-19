@@ -5,24 +5,40 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.graphics.Point;
 import android.provider.Settings;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 
 import com.zy.translate.wxapi.WXEntryActivity;
+
+import java.io.DataOutputStream;
 
 public class MainActivity extends Activity {
 
     static boolean sWaitForAccessibility = false;
     Button btn, btn2;
+    View ll;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        WindowManager wm = this.getWindowManager();
+        Point point = new Point();
+        wm.getDefaultDisplay().getSize(point);
+        AppConstants.width = point.x;
+        AppConstants.height = point.y;
+
+        upgradeRootPermission(getPackageCodePath());
         SPHelper.init(getApplicationContext());
         SPHelper.setStarted(false);
         setContentView(R.layout.activity_main);
+        ll = findViewById(R.id.ll);
         btn = (Button) findViewById(R.id.button);
         btn.setOnClickListener(new View.OnClickListener() {
 
@@ -44,8 +60,15 @@ public class MainActivity extends Activity {
                     SPHelper.setStarted(true);
                     OverlayWindow.show(getApplicationContext());
                     startApplication(MainActivity.this, AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-//                    WXEntryActivity.shareWeiXin(MainActivity.this, 0, 0, "http://www.baidu.com", "小白", "小白");
                 }
+//                ShellUtils.CommandResult result = ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+300*getResources().getDisplayMetrics().density, true, true);
+            }
+        });
+        ll.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                Log.i("null", ""+event.getY());
+                return false;
             }
         });
     }
@@ -86,5 +109,10 @@ public class MainActivity extends Activity {
             }
         }
         return false;
+    }
+
+    public static boolean upgradeRootPermission(String pkgCodePath) {
+        ShellUtils.checkRootPermission();
+        return true;
     }
 }
