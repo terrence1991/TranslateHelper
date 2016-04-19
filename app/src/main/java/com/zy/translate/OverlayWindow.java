@@ -29,7 +29,8 @@ public class OverlayWindow {
                 2002,
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
                         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
-                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE +
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 ,
                 PixelFormat.TRANSLUCENT);
         sWindowParams.gravity = Gravity.TOP;
@@ -68,5 +69,19 @@ public class OverlayWindow {
 
     public static boolean isShown(){
         return isShown;
+    }
+
+    public static void setTouchable(boolean touchable){
+        if(touchable) {
+            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        }else{
+            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE +
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        }
+        sWindowManager.updateViewLayout(sView, sWindowParams);
     }
 }

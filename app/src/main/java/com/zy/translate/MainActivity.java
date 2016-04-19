@@ -61,13 +61,18 @@ public class MainActivity extends Activity {
                     OverlayWindow.show(getApplicationContext());
                     startApplication(MainActivity.this, AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
                 }
-//                ShellUtils.CommandResult result = ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+300*getResources().getDisplayMetrics().density, true, true);
+//                new Thread(){
+//                    @Override
+//                    public void run() {
+//                        ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), true);
+//                    }
+//                }.start();
             }
         });
         ll.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                Log.i("null", ""+event.getY());
+                Log.i("null", ""+event.getRawY());
                 return false;
             }
         });

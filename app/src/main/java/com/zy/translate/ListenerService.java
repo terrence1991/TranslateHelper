@@ -4,12 +4,10 @@ import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -24,11 +22,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.zy.translate.wxapi.WXEntryActivity;
 
 import java.lang.reflect.Field;
@@ -90,7 +88,7 @@ public class ListenerService extends AccessibilityService {
 								if (node2 == null) {
 									waitAccessEvent(1000);
 								} else {
-									retry(node2, null);
+									retryClick(node2, null);
 								}
 							} else {
 
@@ -109,13 +107,22 @@ public class ListenerService extends AccessibilityService {
 								if (textnode.getParent() == null) {
 									return;
 								}
-								retry(textnode.getParent(), null);
+								retryClick(textnode.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
 							if (listNode == null) {
 								waitAccessEvent(1000);
 							} else {
+								if (listNode.getChildCount() > 0) {
+									AccessibilityNodeInfo lastNode = listNode.getChild(listNode.getChildCount() - 1);
+									if (TextUtils.isEmpty(lastNode.getChild(lastNode.getChildCount() - 2).getText())) {
+										if(findNodeByText(lastNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
+											retryClick(lastNode.getChild(lastNode.getChildCount() - 2), null);
+											return;
+										}
+									}
+								}
 								if (listNode.getChildCount() > 1) {
 									AccessibilityNodeInfo toNameNode = listNode.getChild(listNode.getChildCount() - 2);
 									if (toNameNode.getChild(toNameNode.getChildCount() - 2).getText() == null) {
@@ -130,13 +137,9 @@ public class ListenerService extends AccessibilityService {
 											return;
 										}
 										AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
-										if (valueNode.getChild(valueNode.getChildCount() - 2).getText() == null) {
-											if(findNodeByText(valueNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
-												retry(valueNode, null);
-											}else {
-												waitAccessEvent(500);
-												return;
-											}
+										if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
+											waitAccessEvent(3000);
+											return;
 										}
 										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
 										if (temp.equals(lastTranslate)&&toName.equals(lastToName)) {
@@ -155,7 +158,7 @@ public class ListenerService extends AccessibilityService {
 													return;
 												}
 											}else {
-												retry(valueNode.getChild(valueNode.getChildCount() - 2), null);
+												retryClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
 											}
 										}
 
@@ -180,12 +183,12 @@ public class ListenerService extends AccessibilityService {
 								}else{
 									mHandler.removeMessages(1);
 									waitDialog = true;
-									retry(node, null);
+									retryClick(node, null);
 								}
 							} else {
 								mHandler.removeMessages(1);
 								waitDialog = false;
-								retry(node.getParent(), null);
+								retryClick(node.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
 							if(stayWeixin){
@@ -207,12 +210,25 @@ public class ListenerService extends AccessibilityService {
 								}
 							} else {
 								waitDialog = true;
-								retry(textnode.getParent(), new GiveupListener() {
+								retryClick(textnode.getParent(), new GiveupListener() {
 									@Override
 									public void end() {
 										waitDialog = false;
 									}
 								});
+							}
+						} else if ("com.tencent.mm.plugin.webview.ui.tools.WebViewUI".equals(mCurrentActivity)) {
+							AccessibilityNodeInfo progessbar = findNodeByClass(event.getSource(), ProgressBar.class.getName(), null);
+							if(progessbar==null){
+								OverlayWindow.setTouchable(false);
+								new Thread(){
+									@Override
+									public void run() {
+										ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), true);
+									}
+								}.start();
+							}else{
+								waitAccessEvent(1000);
 							}
 						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
@@ -223,11 +239,11 @@ public class ListenerService extends AccessibilityService {
 								}else{
 									waitDialog = false;
 									stayWeixin = true;
-									retry(buttonnode, null);
+									retryClick(buttonnode, null);
 								}
 							} else {
 								waitDialog = false;
-								retry(buttonnode, null);
+								retryClick(buttonnode, null);
 							}
 						} else {
 							waitAccessEvent(1000);
@@ -576,7 +592,7 @@ public class ListenerService extends AccessibilityService {
 		startActivity(waitIntent);
 	}
 
-	private void retry(AccessibilityNodeInfo node, GiveupListener listener){
+	private void retryClick(AccessibilityNodeInfo node, GiveupListener listener){
 		while (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
 			retryTime++;
 			if (retryTime > 3) {
