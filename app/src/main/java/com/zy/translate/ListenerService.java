@@ -49,6 +49,7 @@ public class ListenerService extends AccessibilityService {
 	String lastTranslate;
 	int retryTime;
 	boolean stayWeixin;
+	boolean needRestart;
 
 	private Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
@@ -110,14 +111,20 @@ public class ListenerService extends AccessibilityService {
 								retryClick(textnode.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
+							if(needRestart){
+								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+								needRestart = false;
+								return;
+							}
 							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
 							if (listNode == null) {
 								waitAccessEvent(1000);
 							} else {
-								if (listNode.getChildCount() > 0) {
+								if (listNode.getChildCount() > 0 && !"邀请你加入群聊".equals(lastTranslate)) {
 									AccessibilityNodeInfo lastNode = listNode.getChild(listNode.getChildCount() - 1);
 									if (TextUtils.isEmpty(lastNode.getChild(lastNode.getChildCount() - 2).getText())) {
 										if(findNodeByText(lastNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
+											lastTranslate = "邀请你加入群聊";
 											retryClick(lastNode.getChild(lastNode.getChildCount() - 2), null);
 											return;
 										}
@@ -220,13 +227,13 @@ public class ListenerService extends AccessibilityService {
 						} else if ("com.tencent.mm.plugin.webview.ui.tools.WebViewUI".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo progessbar = findNodeByClass(event.getSource(), ProgressBar.class.getName(), null);
 							if(progessbar==null){
-								OverlayWindow.setTouchable(false);
 								new Thread(){
 									@Override
 									public void run() {
 										ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), true);
 									}
 								}.start();
+								needRestart = true;
 							}else{
 								waitAccessEvent(1000);
 							}

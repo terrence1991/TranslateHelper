@@ -24,8 +24,8 @@ public class OverlayWindow {
                 .getSystemService(Context.WINDOW_SERVICE);
 
         sWindowParams = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
                 2002,
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
                         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
@@ -33,8 +33,11 @@ public class OverlayWindow {
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 ,
                 PixelFormat.TRANSLUCENT);
-        sWindowParams.gravity = Gravity.TOP;
+        sWindowParams.width = 200;
+        sWindowParams.height = 200;
+        sWindowParams.gravity = Gravity.TOP | Gravity.RIGHT;
         sView = LayoutInflater.from(context).inflate(R.layout.window_overlay, null);
+
         tvClose = (TextView) sView.findViewById(R.id.tv_close);
         isShown = false;
         tvClose.setOnClickListener(new View.OnClickListener() {
@@ -71,17 +74,17 @@ public class OverlayWindow {
         return isShown;
     }
 
-    public static void setTouchable(boolean touchable){
-        if(touchable) {
-            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
-                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-        }else{
-            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
-                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE +
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-        }
-        sWindowManager.updateViewLayout(sView, sWindowParams);
-    }
+//    public static void setTouchable(boolean touchable){
+//        if(touchable) {
+//            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
+//                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
+//                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+//        }else{
+//            sWindowParams.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON +
+//                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON +
+//                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE +
+//                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+//        }
+//        sWindowManager.updateViewLayout(sView, sWindowParams);
+//    }
 }

@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
         AppConstants.width = point.x;
         AppConstants.height = point.y;
 
-        upgradeRootPermission(getPackageCodePath());
+//        upgradeRootPermission(getPackageCodePath());
         SPHelper.init(getApplicationContext());
         SPHelper.setStarted(false);
         setContentView(R.layout.activity_main);
@@ -64,7 +64,7 @@ public class MainActivity extends Activity {
 //                new Thread(){
 //                    @Override
 //                    public void run() {
-//                        ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), true);
+//                        ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), false);
 //                    }
 //                }.start();
             }
