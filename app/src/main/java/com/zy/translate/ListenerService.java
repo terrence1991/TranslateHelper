@@ -165,7 +165,7 @@ public class ListenerService extends AccessibilityService {
 													return;
 												}
 											}else {
-												retryClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
+												retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
 											}
 										}
 
@@ -230,7 +230,7 @@ public class ListenerService extends AccessibilityService {
 								new Thread(){
 									@Override
 									public void run() {
-										ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), true);
+										ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), false);
 									}
 								}.start();
 								needRestart = true;
@@ -257,6 +257,7 @@ public class ListenerService extends AccessibilityService {
 						}
 						break;
 					case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
+
 						break;
 				}
 			} else {
@@ -601,6 +602,20 @@ public class ListenerService extends AccessibilityService {
 
 	private void retryClick(AccessibilityNodeInfo node, GiveupListener listener){
 		while (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+			retryTime++;
+			if (retryTime > 3) {
+				if(listener!=null) {
+					listener.end();
+				}
+				retryTime = 0;
+				MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+				break;
+			}
+		}
+	}
+
+	private void retryLongClick(AccessibilityNodeInfo node, GiveupListener listener){
+		while (!node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
 			retryTime++;
 			if (retryTime > 3) {
 				if(listener!=null) {
