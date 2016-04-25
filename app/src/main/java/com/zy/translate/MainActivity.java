@@ -13,6 +13,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.zy.translate.wxapi.WXEntryActivity;
 
@@ -73,6 +74,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 Log.i("null", ""+event.getRawY());
+                Toast.makeText(MainActivity.this, ""+event.getRawY()+","+390*getResources().getDisplayMetrics().density, Toast.LENGTH_LONG).show();
                 return false;
             }
         });

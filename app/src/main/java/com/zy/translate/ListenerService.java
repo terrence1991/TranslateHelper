@@ -39,6 +39,8 @@ import java.util.Map;
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 public class ListenerService extends AccessibilityService {
 
+	private final static int WT = 1000;
+
 	private static ListenerService sInstance;
 	private ClipboardManager clip;
 	private String mCurrentActivity = "";
@@ -48,7 +50,6 @@ public class ListenerService extends AccessibilityService {
 	String lastToName;
 	String lastTranslate;
 	int retryTime;
-	boolean stayWeixin;
 	boolean needRestart;
 
 	private Handler mHandler = new Handler() {
@@ -87,7 +88,7 @@ public class ListenerService extends AccessibilityService {
 							if (node == null) {
 								AccessibilityNodeInfo node2 = ListenerService.findNodeByText(event.getSource(), "搜索", TextView.class.getName(), AccessibilityNodeInfo.ACTION_CLICK, true);
 								if (node2 == null) {
-									waitAccessEvent(1000);
+									waitAccessEvent(WT);
 								} else {
 									retryClick(node2, null);
 								}
@@ -99,7 +100,7 @@ public class ListenerService extends AccessibilityService {
 							if (textnode == null) {
 								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
 								if (editnode == null) {
-									waitAccessEvent(1000);
+									waitAccessEvent(WT);
 								} else {
 									setText(editnode, "文件传输助手");
 									waitAccessEvent(500);
@@ -116,67 +117,102 @@ public class ListenerService extends AccessibilityService {
 								needRestart = false;
 								return;
 							}
+							mHandler.removeMessages(1);
 							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
 							if (listNode == null) {
-								waitAccessEvent(1000);
+								waitAccessEvent(WT);
 							} else {
-								if (listNode.getChildCount() > 0 && !"邀请你加入群聊".equals(lastTranslate)) {
-									AccessibilityNodeInfo lastNode = listNode.getChild(listNode.getChildCount() - 1);
-									if (TextUtils.isEmpty(lastNode.getChild(lastNode.getChildCount() - 2).getText())) {
-										if(findNodeByText(lastNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
-											lastTranslate = "邀请你加入群聊";
-											retryClick(lastNode.getChild(lastNode.getChildCount() - 2), null);
-											return;
-										}
-									}
-								}
-								if (listNode.getChildCount() > 1) {
-									AccessibilityNodeInfo toNameNode = listNode.getChild(listNode.getChildCount() - 2);
-									if (toNameNode.getChild(toNameNode.getChildCount() - 2).getText() == null) {
-										waitAccessEvent(500);
+//								if (listNode.getChildCount() > 0 && !"邀请你加入群聊".equals(lastTranslate)) {
+//									AccessibilityNodeInfo lastNode = listNode.getChild(listNode.getChildCount() - 1);
+//									if (TextUtils.isEmpty(lastNode.getChild(lastNode.getChildCount() - 2).getText())) {
+//										if(findNodeByText(lastNode, "邀请你加入群聊", TextView.class.getName(), 0, false) != null){
+//											lastTranslate = "邀请你加入群聊";
+//											retryClick(lastNode.getChild(lastNode.getChildCount() - 2), null);
+//											return;
+//										}
+//									}
+//								}
+								if (listNode.getChildCount() > 0) {
+									AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
+									if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
+										waitAccessEvent(WT);
 										return;
 									}
-									toName = toNameNode.getChild(toNameNode.getChildCount() - 2).getText().toString();
-									if (toName.startsWith("To:")) {
-										toName = toName.substring(3);
-										if (TextUtils.isEmpty(toName)) {
-											waitAccessEvent(3000);
-											return;
-										}
-										AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
-										if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
-											waitAccessEvent(3000);
-											return;
-										}
-										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
-										if (temp.equals(lastTranslate)&&toName.equals(lastToName)) {
-											waitAccessEvent(3000);
-											return;
-										} else {
-											lastToName = toName;
-											lastTranslate = temp;
-											if(lastTranslate.startsWith("{")){
-												try {
-													Gson gson = new Gson();
-													ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
-													WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
-												} catch (Exception e) {
-													e.printStackTrace();
-													return;
-												}
-											}else {
-												retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
-											}
-										}
-
-										waitDialog = true;
-										mHandler.sendEmptyMessageDelayed(1, 10000);
-									} else {
-										waitAccessEvent(1000);
+									String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
+									if (temp.equals(lastTranslate)) {
+										waitAccessEvent(WT);
+										return;
 									}
+//									lastToName = toName;
+									lastTranslate = temp;
+//									if(!lastTranslate.startsWith("@")){
+//										return;
+//									}
+									if(lastTranslate.startsWith("{")){
+										try {
+											Gson gson = new Gson();
+											ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
+											WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
+										} catch (Exception e) {
+											e.printStackTrace();
+											return;
+										}
+									}else {
+										retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
+									}
+
+									waitDialog = true;
+									mHandler.sendEmptyMessageDelayed(1, 10000);
 								} else {
-									waitAccessEvent(3000);
+									waitAccessEvent(WT);
 								}
+//								if (listNode.getChildCount() > 1) {
+//									AccessibilityNodeInfo toNameNode = listNode.getChild(listNode.getChildCount() - 2);
+//									if (toNameNode.getChild(toNameNode.getChildCount() - 2).getText() == null) {
+//										waitAccessEvent(500);
+//										return;
+//									}
+//									toName = toNameNode.getChild(toNameNode.getChildCount() - 2).getText().toString();
+//									if (toName.startsWith("To:")) {
+//										toName = toName.substring(3);
+//										if (TextUtils.isEmpty(toName)) {
+//											waitAccessEvent(3000);
+//											return;
+//										}
+//										AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
+//										if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
+//											waitAccessEvent(3000);
+//											return;
+//										}
+//										String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
+//										if (temp.equals(lastTranslate)&&toName.equals(lastToName)) {
+//											waitAccessEvent(3000);
+//											return;
+//										} else {
+//											lastToName = toName;
+//											lastTranslate = temp;
+//											if(lastTranslate.startsWith("{")){
+//												try {
+//													Gson gson = new Gson();
+//													ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
+//													WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
+//												} catch (Exception e) {
+//													e.printStackTrace();
+//													return;
+//												}
+//											}else {
+//												retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
+//											}
+//										}
+//
+//										waitDialog = true;
+//										mHandler.sendEmptyMessageDelayed(1, 10000);
+//									} else {
+//										waitAccessEvent(1000);
+//									}
+//								} else {
+//									waitAccessEvent(3000);
+//								}
 							}
 						} else if (mCurrentActivity.startsWith("com.tencent.mm.ui.base") && waitDialog) {
 							Log.i("NULL", "" + mCurrentActivity);
@@ -198,32 +234,37 @@ public class ListenerService extends AccessibilityService {
 								retryClick(node.getParent(), null);
 							}
 						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
-							if(stayWeixin){
-								stayWeixin = false;
-								return;
-							}
-							if (toName == null) {
-								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-								return;
-							}
-							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), toName, TextView.class.getName(), 0, false);
-							if (textnode == null) {
-								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
-								if (editnode == null) {
-									waitAccessEvent(1000);
-								} else {
-									setText(editnode, toName);
-									waitAccessEvent(500);
-								}
-							} else {
+							if(event.getSource()!=null&&event.getSource().getChild(1)!=null&&event.getSource().getChild(1).getChild(2)!=null) {
 								waitDialog = true;
-								retryClick(textnode.getParent(), new GiveupListener() {
+								retryClick(event.getSource().getChild(1).getChild(2),  new GiveupListener() {
 									@Override
 									public void end() {
 										waitDialog = false;
 									}
 								});
 							}
+//							if (toName == null) {
+//								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+//								return;
+//							}
+//							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), toName, TextView.class.getName(), 0, false);
+//							if (textnode == null) {
+//								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
+//								if (editnode == null) {
+//									waitAccessEvent(1000);
+//								} else {
+//									setText(editnode, toName);
+//									waitAccessEvent(500);
+//								}
+//							} else {
+//								waitDialog = true;
+//								retryClick(textnode.getParent(), new GiveupListener() {
+//									@Override
+//									public void end() {
+//										waitDialog = false;
+//									}
+//								});
+//							}
 						} else if ("com.tencent.mm.plugin.webview.ui.tools.WebViewUI".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo progessbar = findNodeByClass(event.getSource(), ProgressBar.class.getName(), null);
 							if(progessbar==null){
@@ -235,7 +276,7 @@ public class ListenerService extends AccessibilityService {
 								}.start();
 								needRestart = true;
 							}else{
-								waitAccessEvent(1000);
+								waitAccessEvent(WT);
 							}
 						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
 							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
@@ -245,7 +286,6 @@ public class ListenerService extends AccessibilityService {
 									waitAccessEvent(500);
 								}else{
 									waitDialog = false;
-									stayWeixin = true;
 									retryClick(buttonnode, null);
 								}
 							} else {
@@ -253,7 +293,7 @@ public class ListenerService extends AccessibilityService {
 								retryClick(buttonnode, null);
 							}
 						} else {
-							waitAccessEvent(1000);
+							waitAccessEvent(WT);
 						}
 						break;
 					case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
