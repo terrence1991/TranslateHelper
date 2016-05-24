@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.support.v4.view.ViewPager;
 import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
 import android.text.TextUtils;
 import android.util.Log;
@@ -23,6 +24,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
@@ -51,6 +53,7 @@ public class ListenerService extends AccessibilityService {
 	String lastTranslate;
 	int retryTime;
 	boolean needRestart;
+	int mStep = 0;
 
 	private Handler mHandler = new Handler() {
 		public void handleMessage(android.os.Message msg) {
@@ -64,7 +67,7 @@ public class ListenerService extends AccessibilityService {
 
 	@SuppressLint("NewApi")
 	@Override
-	public void onAccessibilityEvent(AccessibilityEvent event) {
+	public void onAccessibilityEvent(final AccessibilityEvent event) {
 		if (event == null || event.getPackageName() == null) {
 			return;
 		}
@@ -83,45 +86,93 @@ public class ListenerService extends AccessibilityService {
 				switch (event.getEventType()) {
 					case AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED:
 						mCurrentActivity = event.getClassName().toString();
-						if ("com.tencent.mm.ui.LauncherUI".equals(mCurrentActivity)) {
+//						if ("com.tencent.mm.ui.LauncherUI".equals(mCurrentActivity)) {
+//							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "返回", ImageView.class.getName(), 0, true);
+//							if (node == null) {
+////								AccessibilityNodeInfo node2 = ListenerService.findNodeByText(event.getSource(), "搜索", TextView.class.getName(), AccessibilityNodeInfo.ACTION_CLICK, true);
+////								if (node2 == null) {
+////									waitAccessEvent(WT);
+////								} else {
+////									retryClick(node2, null);
+////								}
+//							} else {
+//								retryClick(node, null);
+//							}
+//						} else
+						if ("com.tencent.mm.ui.LauncherUI".equals(mCurrentActivity) && mStep == 1) {
+							boolean hasNotNullChild = false;
+							AccessibilityNodeInfo listView_qh = findNodeByClass(event.getSource(), ListView.class.getName(), ViewPager.class.getName());
+							for (int i = listView_qh.getChildCount() - 1; i >= 0; i--) {
+								AccessibilityNodeInfo nodeInfo = listView_qh.getChild(i);
+								if (nodeInfo == null) {
+									continue;
+								}
+								if (!RelativeLayout.class.getName().equals(nodeInfo.getClassName())) {
+									nodeInfo.recycle();
+									continue;
+								}
+								hasNotNullChild = true;
+
+								if (nodeInfo.findAccessibilityNodeInfosByText("邀请你加入群聊").size() == 0) {
+									nodeInfo.recycle();
+									continue;
+								}
+								AccessibilityNodeInfo s9 = nodeInfo.getChild(nodeInfo.getChildCount() - 1);
+								retryClick(s9, new GiveupListener() {
+									@Override
+									public void end() {
+										AccessibilityNodeInfo node = findNodeByText(event.getSource(), "返回", ImageView.class.getName(), 0, true);
+										if (node == null) {
+											MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+										} else {
+											retryClick(node, null);
+										}
+									}
+								});
+							}
+							if (!hasNotNullChild) {
+								listView_qh.recycle();
+								AccessibilityNodeInfo node = findNodeByText(event.getSource(), "返回", ImageView.class.getName(), 0, true);
+								if (node == null) {
+									MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+								} else {
+									retryClick(node, null);
+								}
+							}
+						} else if ("com.tencent.mm.ui.LauncherUI".equals(mCurrentActivity) && mStep == 3){
 							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "返回", ImageView.class.getName(), 0, true);
 							if (node == null) {
-								AccessibilityNodeInfo node2 = ListenerService.findNodeByText(event.getSource(), "搜索", TextView.class.getName(), AccessibilityNodeInfo.ACTION_CLICK, true);
-								if (node2 == null) {
-									waitAccessEvent(WT);
-								} else {
-									retryClick(node2, null);
-								}
-							} else {
-
-							}
-						} else if ("com.tencent.mm.plugin.search.ui.FTSMainUI".equals(mCurrentActivity)) {
-							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), "文件传输助手", TextView.class.getName(), 0, false);
-							if (textnode == null) {
-								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
-								if (editnode == null) {
-									waitAccessEvent(WT);
-								} else {
-									setText(editnode, "文件传输助手");
-									waitAccessEvent(500);
-								}
-							} else {
-								if (textnode.getParent() == null) {
-									return;
-								}
-								retryClick(textnode.getParent(), null);
-							}
-						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
-							if(needRestart){
 								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
-								needRestart = false;
-								return;
-							}
-							mHandler.removeMessages(1);
-							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
-							if (listNode == null) {
-								waitAccessEvent(WT);
 							} else {
+								retryClick(node, null);
+							}
+//						} else if ("com.tencent.mm.plugin.search.ui.FTSMainUI".equals(mCurrentActivity)) {
+//							AccessibilityNodeInfo textnode = findNodeByText(event.getSource(), "文件传输助手", TextView.class.getName(), 0, false);
+//							if (textnode == null) {
+//								AccessibilityNodeInfo editnode = findNodeByClass(event.getSource(), EditText.class.getName(), null);
+//								if (editnode == null) {
+//									waitAccessEvent(WT);
+//								} else {
+//									setText(editnode, "文件传输助手");
+//									waitAccessEvent(500);
+//								}
+//							} else {
+//								if (textnode.getParent() == null) {
+//									return;
+//								}
+//								retryClick(textnode.getParent(), null);
+//							}
+//						} else if ("com.tencent.mm.ui.chatting.ChattingUI".equals(mCurrentActivity)) {
+//							if(needRestart){
+//								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+//								needRestart = false;
+//								return;
+//							}
+//							mHandler.removeMessages(1);
+//							AccessibilityNodeInfo listNode = findNodeByClass(event.getSource(), ListView.class.getName(), null);
+//							if (listNode == null) {
+//								waitAccessEvent(WT);
+//							} else {
 //								if (listNode.getChildCount() > 0 && !"邀请你加入群聊".equals(lastTranslate)) {
 //									AccessibilityNodeInfo lastNode = listNode.getChild(listNode.getChildCount() - 1);
 //									if (TextUtils.isEmpty(lastNode.getChild(lastNode.getChildCount() - 2).getText())) {
@@ -132,40 +183,40 @@ public class ListenerService extends AccessibilityService {
 //										}
 //									}
 //								}
-								if (listNode.getChildCount() > 0) {
-									AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
-									if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
-										waitAccessEvent(WT);
-										return;
-									}
-									String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
-									if (temp.equals(lastTranslate)) {
-										waitAccessEvent(WT);
-										return;
-									}
-//									lastToName = toName;
-									lastTranslate = temp;
-//									if(!lastTranslate.startsWith("@")){
+//								if (listNode.getChildCount() > 0) {
+//									AccessibilityNodeInfo valueNode = listNode.getChild(listNode.getChildCount() - 1);
+//									if (TextUtils.isEmpty(valueNode.getChild(valueNode.getChildCount() - 2).getText())) {
+//										waitAccessEvent(WT);
 //										return;
 //									}
-									if(lastTranslate.startsWith("{")){
-										try {
-											Gson gson = new Gson();
-											ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
-											WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
-										} catch (Exception e) {
-											e.printStackTrace();
-											return;
-										}
-									}else {
-										retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
-									}
-
-									waitDialog = true;
-									mHandler.sendEmptyMessageDelayed(1, 10000);
-								} else {
-									waitAccessEvent(WT);
-								}
+//									String temp = valueNode.getChild(valueNode.getChildCount() - 2).getText().toString();
+//									if (temp.equals(lastTranslate)) {
+//										waitAccessEvent(WT);
+//										return;
+//									}
+////									lastToName = toName;
+//									lastTranslate = temp;
+////									if(!lastTranslate.startsWith("@")){
+////										return;
+////									}
+//									if(lastTranslate.startsWith("{")){
+//										try {
+//											Gson gson = new Gson();
+//											ShareItem item = gson.fromJson(lastTranslate, ShareItem.class);
+//											WXEntryActivity.shareWeiXin(this, 0, 0, item.getUrl(), item.getTitle(), item.getContent());
+//										} catch (Exception e) {
+//											e.printStackTrace();
+//											return;
+//										}
+//									}else {
+//										retryLongClick(valueNode.getChild(valueNode.getChildCount() - 2), null);
+//									}
+//
+//									waitDialog = true;
+//									mHandler.sendEmptyMessageDelayed(1, 10000);
+//								} else {
+//									waitAccessEvent(WT);
+//								}
 //								if (listNode.getChildCount() > 1) {
 //									AccessibilityNodeInfo toNameNode = listNode.getChild(listNode.getChildCount() - 2);
 //									if (toNameNode.getChild(toNameNode.getChildCount() - 2).getText() == null) {
@@ -213,36 +264,36 @@ public class ListenerService extends AccessibilityService {
 //								} else {
 //									waitAccessEvent(3000);
 //								}
-							}
-						} else if (mCurrentActivity.startsWith("com.tencent.mm.ui.base") && waitDialog) {
-							Log.i("NULL", "" + mCurrentActivity);
-							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "转发", TextView.class.getName(), 0, false);
-							if (node == null) {
-								Log.i("NULL", "没有转发");
-								node = findNodeByText(event.getSource(), "分享", Button.class.getName(), 16, false);
-								if(node == null) {
-									Log.i("NULL", "没有分享");
-									waitAccessEvent(500);
-								}else{
-									mHandler.removeMessages(1);
-									waitDialog = true;
-									retryClick(node, null);
-								}
-							} else {
-								mHandler.removeMessages(1);
-								waitDialog = false;
-								retryClick(node.getParent(), null);
-							}
-						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
-							if(event.getSource()!=null&&event.getSource().getChild(1)!=null&&event.getSource().getChild(1).getChild(2)!=null) {
-								waitDialog = true;
-								retryClick(event.getSource().getChild(1).getChild(2),  new GiveupListener() {
-									@Override
-									public void end() {
-										waitDialog = false;
-									}
-								});
-							}
+//							}
+//						} else if (mCurrentActivity.startsWith("com.tencent.mm.ui.base") && waitDialog) {
+//							Log.i("NULL", "" + mCurrentActivity);
+//							AccessibilityNodeInfo node = findNodeByText(event.getSource(), "转发", TextView.class.getName(), 0, false);
+//							if (node == null) {
+//								Log.i("NULL", "没有转发");
+//								node = findNodeByText(event.getSource(), "分享", Button.class.getName(), 16, false);
+//								if(node == null) {
+//									Log.i("NULL", "没有分享");
+//									waitAccessEvent(500);
+//								}else{
+//									mHandler.removeMessages(1);
+//									waitDialog = true;
+//									retryClick(node, null);
+//								}
+//							} else {
+//								mHandler.removeMessages(1);
+//								waitDialog = false;
+//								retryClick(node.getParent(), null);
+//							}
+//						} else if ("com.tencent.mm.ui.transmit.SelectConversationUI".equals(mCurrentActivity)) {
+//							if(event.getSource()!=null&&event.getSource().getChild(1)!=null&&event.getSource().getChild(1).getChild(2)!=null) {
+//								waitDialog = true;
+//								retryClick(event.getSource().getChild(1).getChild(2),  new GiveupListener() {
+//									@Override
+//									public void end() {
+//										waitDialog = false;
+//									}
+//								});
+//							}
 //							if (toName == null) {
 //								MainActivity.startApplication(getApplicationContext(), AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
 //								return;
@@ -274,30 +325,44 @@ public class ListenerService extends AccessibilityService {
 										ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(390*getResources().getDisplayMetrics().density), false);
 									}
 								}.start();
-								needRestart = true;
+								mStep = 3;
 							}else{
 								waitAccessEvent(WT);
 							}
-						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
-							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
-							if (buttonnode == null) {
-								buttonnode = findNodeByText(event.getSource(), "留在微信", Button.class.getName(), 16, false);
-								if (buttonnode == null) {
-									waitAccessEvent(500);
-								}else{
-									waitDialog = false;
-									retryClick(buttonnode, null);
-								}
-							} else {
-								waitDialog = false;
-								retryClick(buttonnode, null);
-							}
+//						} else if (waitDialog && "android.widget.LinearLayout".equals(mCurrentActivity)) {
+//							AccessibilityNodeInfo buttonnode = findNodeByText(event.getSource(), "发送", Button.class.getName(), 16, false);
+//							if (buttonnode == null) {
+//								buttonnode = findNodeByText(event.getSource(), "留在微信", Button.class.getName(), 16, false);
+//								if (buttonnode == null) {
+//									waitAccessEvent(500);
+//								}else{
+//									waitDialog = false;
+//									retryClick(buttonnode, null);
+//								}
+//							} else {
+//								waitDialog = false;
+//								retryClick(buttonnode, null);
+//							}
 						} else {
 							waitAccessEvent(WT);
 						}
 						break;
 					case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
+						Notification notification = (Notification) event.getParcelableData();
+						if (notification == null) {
+							return;
+						}
 
+						String texts[] = getContentText(notification);
+						String contentText = texts[0];
+						String title = texts[1];
+						if (contentText == null || title == null || notification.tickerText == null) {
+							return;
+						}
+						if(contentText.contains("邀请你加入群聊")){
+							notification.contentIntent.send();
+							mStep = 1;
+						}
 						break;
 				}
 			} else {
