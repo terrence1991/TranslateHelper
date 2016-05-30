@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
         AppConstants.width = point.x;
         AppConstants.height = point.y;
 
-//        upgradeRootPermission(getPackageCodePath());
+        upgradeRootPermission(getPackageCodePath());
         SPHelper.init(getApplicationContext());
         SPHelper.setStarted(false);
         setContentView(R.layout.activity_main);
@@ -61,6 +61,12 @@ public class MainActivity extends Activity {
                     SPHelper.setStarted(true);
                     OverlayWindow.show(getApplicationContext());
                     startApplication(MainActivity.this, AppConstants.WECHAT_PACKAGE_NAME, Intent.FLAG_ACTIVITY_CLEAR_TOP + Intent.FLAG_ACTIVITY_NEW_TASK);
+//                    new Thread(){
+//                        @Override
+//                        public void run() {
+//                            ShellUtils.execCommand("input tap "+AppConstants.width/2+" "+(int)(440*getResources().getDisplayMetrics().density), false);
+//                        }
+//                    }.start();
                 }
 //                new Thread(){
 //                    @Override
@@ -74,7 +80,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 Log.i("null", ""+event.getRawY());
-                Toast.makeText(MainActivity.this, ""+event.getRawY()+","+390*getResources().getDisplayMetrics().density, Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, ""+event.getRawY(), Toast.LENGTH_LONG).show();
                 return false;
             }
         });
